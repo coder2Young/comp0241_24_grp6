@@ -1,5 +1,5 @@
 # Lab exercises for COMP0241 Computer Vision and Sensing
-(Majority of the material is adapted from COMP0026)
+(Majority of the material is adapted from COMP0026 and COMP0137)
 
 ## TL;DR
 
