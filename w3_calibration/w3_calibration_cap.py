@@ -7,11 +7,15 @@ chessboard_size = (4, 7)  # Inner corners in the chessboard
 capture_key = 'c'  # Key to capture the image
 exit_key = 'q'  # Key to exit the program
 
+
 # Create the output folder if it doesn't exist
 os.makedirs(output_folder, exist_ok=True)
 
 # Open the webcam (use the appropriate index if multiple cameras are connected)
 cap = cv2.VideoCapture(0)  # Change the index to 1, 2, etc., if needed
+
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 800)
 
 if not cap.isOpened():
     print("Error: Unable to access the camera.")
