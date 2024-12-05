@@ -1,4 +1,4 @@
-### **Lab 4a: Evaluate Colmap reconstruction with varying Parameters**
+# **Lab 4a: Evaluate Colmap reconstruction with varying Parameters**
 
 We are switching from a Jupyter notebook to a Python file format for this exercise because the code has significant execution time and Jupyter notebooks may experience kernel crashes during long-running processes. For the first half of Lab 4, you will:
 
@@ -97,7 +97,7 @@ pip install pyliblzfse
 
 5. **Dataset Customization:**
    - For the lab task, you need to **create your own dataset**:
-     - Capture images of a **relatively small object** and a **relatively large object**.
+     - Capture images of one **relatively small object** or a **relatively large object**.
      - **Place these images** in a directory under `"Your own dataset"/images` and use them with `demo_colmap.py`.
 
 6. **Adjusting for Scale:**
