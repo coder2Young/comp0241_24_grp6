@@ -63,6 +63,13 @@ color_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
 # Generate a mask and find the centroid of the desired region
 _, centroid, _ = get_mask(color_image)
 x_c, y_c = centroid
+# Draw a circle at the centroid
+cv2.circle(color_image, centroid, 5, (255, 0, 0), -1)
+cv2.putText(color_image, f"Centroid {centroid}", (x_c + 10, y_c), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+# Save the image with the centroid marked
+plt.imshow(color_image)
+plt.axis("off")
+plt.savefig("./Dataset/grp6/task2/task2_centroid.png", bbox_inches="tight")
 
 # Map the color image coordinates to depth image coordinates
 x_d = int(x_c * depth_width / color_width)

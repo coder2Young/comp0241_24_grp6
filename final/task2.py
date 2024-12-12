@@ -76,7 +76,7 @@ def update_weighted_average(new_centroid, centroid_window, weight_window, max_di
     return smoothed_centroid
 
 # Enable debug mode
-debug = False
+debug = True
 # Write the output to a video file
 write = False
 # Set video source: from camera or file
@@ -85,7 +85,7 @@ from_camera = False
 if from_camera:
     cap = cv2.VideoCapture(0)
 else:
-    cap = cv2.VideoCapture("./Dataset/grp6/task2.mp4")
+    cap = cv2.VideoCapture("./Dataset/grp6/task2/task2.mp4")
 
 FPS = cap.get(cv2.CAP_PROP_FPS)
 
@@ -147,6 +147,9 @@ while True:
 
             cv2.putText(frame, f"Current Centroid: {smoothed_centroid_int}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
             cv2.circle(frame, smoothed_centroid_int, 5, (0, 255, 0), -1)
+        if debug:
+            # Draw enclosing circle
+            cv2.circle(frame, smoothed_centroid_int, int(radius), (255, 0, 0), 2)
 
     # Calculate elapsed time
     time_elapsed = time.time() - start_time
