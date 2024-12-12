@@ -127,6 +127,7 @@ if debug:
 # Process video frames
 current_frame = 0
 while True:
+    process_start_time = cv2.getTickCount()
     ret, frame = cap.read()
     if not ret:
         break
@@ -174,6 +175,11 @@ while True:
         break
     if current_frame > MAX_TIME * FPS:
         break
+    process_end_time = cv2.getTickCount()
+    process_time = (process_end_time - process_start_time) / cv2.getTickFrequency()
+    frame_time = 1 / FPS
+    if current_frame % (FPS * 3) == 0:
+        print(f"Frame {current_frame}: Process time: {process_time:.4f}s, Frame time: {frame_time:.4f}s")
 
 cap.release()
 cv2.destroyAllWindows()
