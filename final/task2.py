@@ -2,30 +2,31 @@ import cv2
 import numpy as np
 import os
 import time
+from collections import deque
 
-debug = False
+# Function to generate a mask and calculate the centroid and radius of the Earth-like region
+def get_mask(frame):
+    """
+    Generate a mask for the desired region and calculate its centroid and radius.
+    """
+    # Convert the frame to HSV color space
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-def get_mask(image):
-    # Convert image to HSV color space
-    # For acceleration, we can use cv2.COLOR_BGR2HSV directly
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-
-    # Method1: Color Thresholding
+    # Threshold to isolate the desired color range
     lower_hsv = np.array([80, 10, 10])
     upper_hsv = np.array([180, 255, 255])
     mask = cv2.inRange(hsv, lower_hsv, upper_hsv)
 
-    # Noise removal
+    # Noise removal with morphological operations
     kernel = np.ones((7, 7), np.uint8)
     mask = cv2.erode(mask, kernel, iterations=2)
     mask = cv2.dilate(mask, kernel, iterations=2)
 
-    # Method2: Enclosing Circle
-    contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Find contours
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     min_area = 5000
     max_area = 0
     max_circle = None
-    center = None
 
     for contour in contours:
         area = cv2.contourArea(contour)
@@ -35,93 +36,141 @@ def get_mask(image):
         roi = max(box[1][0] / box[1][1], box[1][1] / box[1][0])
         if roi > 1.5 or area < min_area:
             continue
-        # Find minimum enclosing circle
+        # Find the minimum enclosing circle
         (x, y), radius = cv2.minEnclosingCircle(contour)
         if area > max_area:
             max_area = area
             max_circle = (x, y, radius)
 
     if max_circle:
-        (x, y, radius) = max_circle
-        center = (int(x), int(y))
-        radius = int(radius - 10)
-
-        # Create mask
-        height, width = image.shape[:2]
-        maskImg = np.zeros((height, width), dtype=np.uint8)
-        cv2.circle(maskImg, center, radius, 255, thickness=-1)
+        return mask, (int(max_circle[0]), int(max_circle[1])), max_circle[2]
     else:
-        # Return empty mask
-        height, width = image.shape[:2]
-        maskImg = np.zeros((height, width), dtype=np.uint8)
+        return mask, None, None
 
-    return image, maskImg, center, radius
+# Function to smooth centroid updates using a weighted average
+def update_weighted_average(new_centroid, centroid_window, weight_window, max_distance):
+    """
+    Smooth centroid updates using a weighted average.
+    """
+    # Initialize the current average
+    if len(centroid_window) == 0:
+        current_average = np.array(new_centroid)
+    else:
+        weighted_sum = np.sum([w * np.array(c) for c, w in zip(centroid_window, weight_window)], axis=0)
+        weight_sum = np.sum(weight_window)
+        current_average = weighted_sum / weight_sum
 
-# Open the camera
-cap = cv2.VideoCapture(0)
+    # Compute distance from the new centroid to the current average
+    distance = np.linalg.norm(np.array(new_centroid) - current_average)
+    new_weight = 1 / (1 + distance / max_distance)
 
-# Check if the camera is opened
+    # Update sliding windows
+    centroid_window.append(new_centroid)
+    weight_window.append(new_weight)
+
+    # Recalculate the smoothed centroid
+    weighted_sum = np.sum([w * np.array(c) for c, w in zip(centroid_window, weight_window)], axis=0)
+    weight_sum = np.sum(weight_window)
+    smoothed_centroid = weighted_sum / weight_sum
+
+    return smoothed_centroid
+
+# Enable debug mode
+debug = False
+# Write the output to a video file
+write = False
+# Set video source: from camera or file
+from_camera = False
+
+if from_camera:
+    cap = cv2.VideoCapture(0)
+else:
+    cap = cv2.VideoCapture("./Dataset/grp6/task2.mp4")
+
+FPS = cap.get(cv2.CAP_PROP_FPS)
+
+# Check if the video source is available
 if not cap.isOpened():
-    print("Error: Could not open camera.")
+    print("Error: Could not open video.")
     exit(1)
 
-# Get the width and height of frame
+# Get frame dimensions
 frame_width = int(cap.get(3))
 frame_height = int(cap.get(4))
-# Define the codec and create VideoWriter object
-dataset_path = "./Dataset/grp6"
-fourcc = cv2.VideoWriter_fourcc(*'H264')
-out = cv2.VideoWriter(os.path.join(dataset_path,"AO_cap.mp4"), fourcc, 20.0, (frame_width, frame_height))
 
+# Set up the video writer
+dataset_path = "./Dataset/grp6/task2"
+if write:
+    file_name = f"task2_AO_cap_{time.strftime('%Y%m%d-%H%M%S')}.mp4"
+    fourcc = cv2.VideoWriter_fourcc(*'H264')
+    out = cv2.VideoWriter(os.path.join(dataset_path, file_name), fourcc, FPS, (frame_width, frame_height))
+
+# Initialize variables
 start_time = time.time()
 centroids = []
-WINDOW_SIZE = 10
+WINDOW_SIZE = 50
+MAX_WEIGHT_DISTANCE = 500
+centroid_window = deque(maxlen=WINDOW_SIZE)
+weight_window = deque(maxlen=WINDOW_SIZE)
+cap_centroid = []
+cap_time = []
 
-cv2.waitKey(500)
+# Process frames in the video
+frame_count = 0
 while True:
     ret, frame = cap.read()
-
-    # Up-down flip
-    frame = cv2.flip(frame, 0)
+    frame_count += 1
 
     if not ret:
         print("Error: Could not read frame.")
         break
 
-    # Get mask
-    frame, mask, centroid, radius = get_mask(frame)
+    if from_camera:
+        frame = cv2.flip(frame, 0)
 
+    _, centroid, radius = get_mask(frame)
     if centroid is not None:
-        if len(centroids) >= WINDOW_SIZE:
-            centroids.pop(0)
-            
-        centroids.append(centroid)
-        # Calculate the average of the last 10 centroids
-        avg_centroid = np.mean(centroids, axis=0)
-        cv2.circle(frame, (int(avg_centroid[0]), int(avg_centroid[1])), 5, (0, 0, 255), -1)
-        # Put text about the centroid
-        cv2.putText(frame, f"Centroid: {avg_centroid}", (10,90), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+        # Smooth the centroid position
+        smoothed_centroid = update_weighted_average(centroid, centroid_window, weight_window, MAX_WEIGHT_DISTANCE)
 
-    # Calculate time elapsed
+        # Visualize the smoothed centroid
+        smoothed_centroid_int = tuple(map(int, smoothed_centroid))
+        if len(cap_centroid) == 0:
+            cv2.circle(frame, smoothed_centroid_int, 5, (0, 255, 0), -1)  # Currnt for Green dot
+            cv2.putText(frame, f"Current Centroid: {smoothed_centroid_int}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        else:
+            for i in range(len(cap_centroid)):
+                prev_centroid = cap_centroid[i]
+                time_elapsed = cap_time[i]
+                cv2.circle(frame, prev_centroid, 5, (0, 0, 255), -1) # Prev for Red dot
+                cv2.putText(frame, f"Centroid{i}: {prev_centroid} at Time {time_elapsed:.2f}", (10, 30*(i+3)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+            cv2.putText(frame, f"Current Centroid: {smoothed_centroid_int}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.circle(frame, smoothed_centroid_int, 5, (0, 255, 0), -1)
+
+    # Calculate elapsed time
     time_elapsed = time.time() - start_time
-    # Mark time_elpased on video
-    cv2.putText(frame, f"Time Elapsed: {time_elapsed:.2f}s", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-    # Write the frame into the file 'output.avi'
-    out.write(frame)
-    # Display the resulting frame
+    # Write frame to output file if recording is enabled
+    if write:
+        out.write(frame)
+
+    # Display the current frame
     cv2.imshow('frame', frame)
 
-    # Calculate SSD aroung centroid
-    if len(centroids) == WINDOW_SIZE:
-        ssd = np.sum(np.square(centroids - avg_centroid), axis=1)
-        if debug:
-            print(f"SSD: {ssd}")
-
-    # Press Q on keyboard to stop recording
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    # Handle user input
+    key = cv2.waitKey(1) & 0xFF
+    if key == ord('q'):  # Quit
         break
+    elif key == ord('c'):  # Capture a frame
+        ellpased_time = frame_count / FPS
+        cap_centroid.append(smoothed_centroid_int)
+        cap_time.append(ellpased_time)
+    elif key == ord('s'):
+        # Save the frame as an image
+        cv2.imwrite(os.path.join(dataset_path, f"task2_{time.strftime('%Y%m%d-%H%M%S')}.png"), frame)
+        print("Frame saved.")
 
-# Release everything if job is finished
+# Release resources
 cap.release()
 cv2.destroyAllWindows()
