@@ -74,14 +74,13 @@ def get_mask(frame):
     else:
         return mask, None, None
 
-# Video index, total 4, from 1
-video_index = 1
+video_name = "task3e_close"
 
 # Enable debug mode
 debug = False
 
 # Video file path and capture initialization
-video_path = f"./Dataset/grp6/task3/task3c_{video_index}.mp4"
+video_path = "./Dataset/grp6/task3/" + video_name + ".mp4"
 cap = cv2.VideoCapture(video_path)
 FPS = cap.get(cv2.CAP_PROP_FPS)
 if debug:
@@ -94,7 +93,7 @@ if not cap.isOpened():
 # Parameters
 WINDOW_SIZE = 50
 MAX_WEIGHT_DISTANCE = 500
-MAX_TIME = 700  # 10 minutes in seconds, limite process time, between one rotation and two
+MAX_TIME = 700  # 12 minutes in seconds, limite process time, between one rotation and two
 start_time = 10  # Start analyzing at 10 seconds, to avoid the initial noise
 
 # Initialize smoothing windows for centroid and radius
@@ -199,8 +198,8 @@ SSD = np.array(SSD)
 plt.plot(SSD)
 plt.xlabel("Frame")
 plt.ylabel("SSD")
-plt.title("SSD over time")
+plt.title(f"SSD over time for {video_name}")
 plt.text(min_index-5000, min_value, f"Min SSD at {min_index}th frame\nFPS is {FPS}", fontsize=12, ha='center', color='red')
 plt.text(len(SSD) // 2, min(SSD), f"Rotation period: {period:.2f}s", fontsize=12, ha='center', color='red') 
-plt.savefig(f"./Dataset/grp6/task3/task3c_{video_index}_ssd.png")
+plt.savefig(f"./Dataset/grp6/task3/{video_name}_SSD.png")
 plt.show()
