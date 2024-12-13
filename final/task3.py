@@ -3,9 +3,6 @@ import numpy as np
 from collections import deque
 import matplotlib.pyplot as plt
 
-# Enable debug mode
-debug = False
-
 # Function to update the weighted average for smoothing centroid or radius
 def update_weighted_average(new_value, value_window, weight_window, max_distance):
     """
@@ -77,8 +74,14 @@ def get_mask(frame):
     else:
         return mask, None, None
 
+# Video index, total 4, from 1
+video_index = 1
+
+# Enable debug mode
+debug = False
+
 # Video file path and capture initialization
-video_path = "./Dataset/grp6/task3/task3c.mp4"
+video_path = f"./Dataset/grp6/task3/task3c_{video_index}.mp4"
 cap = cv2.VideoCapture(video_path)
 FPS = cap.get(cv2.CAP_PROP_FPS)
 if debug:
@@ -91,8 +94,8 @@ if not cap.isOpened():
 # Parameters
 WINDOW_SIZE = 50
 MAX_WEIGHT_DISTANCE = 500
-MAX_TIME = 600  # 10 minutes in seconds
-start_time = 10  # Start analyzing at 10 seconds
+MAX_TIME = 700  # 10 minutes in seconds, limite process time, between one rotation and two
+start_time = 10  # Start analyzing at 10 seconds, to avoid the initial noise
 
 # Initialize smoothing windows for centroid and radius
 centroid_window = deque(maxlen=WINDOW_SIZE)
@@ -184,18 +187,20 @@ while True:
 cap.release()
 cv2.destroyAllWindows()
 
+# Calculate rotation period based on SSD
+SS = SSD[drop_frame_num:] # Drop the first few frames
+min_index = np.argmin(SS) + drop_frame_num
+min_value = SSD[min_index]
+period = min_index / FPS
+print(f"Rotation period: {period:.2f}s")
+
 # Plot SSD over time
 SSD = np.array(SSD)
 plt.plot(SSD)
 plt.xlabel("Frame")
 plt.ylabel("SSD")
 plt.title("SSD over time")
-plt.savefig("./Dataset/grp6/task3/task3c_ssd.png")
+plt.text(min_index-5000, min_value, f"Min SSD at {min_index}th frame\nFPS is {FPS}", fontsize=12, ha='center', color='red')
+plt.text(len(SSD) // 2, min(SSD), f"Rotation period: {period:.2f}s", fontsize=12, ha='center', color='red') 
+plt.savefig(f"./Dataset/grp6/task3/task3c_{video_index}_ssd.png")
 plt.show()
-
-# Calculate rotation period based on SSD
-SS = SSD[drop_frame_num:]
-min_index = np.argmin(SS) + drop_frame_num
-min_value = SSD[min_index]
-period = min_index / FPS - start_time
-print(f"Rotation period: {period:.2f}s")
