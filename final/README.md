@@ -54,11 +54,10 @@ For task2c, run the task2c.py, the height of AO will be printed in the terminal.
 
 ### Task3
 
-For task3, set the variable from 1-4 to examine the result from different perspectives.
+For task3, set the variable video_name according to different sub-task
 
 ```
-# Video index, total 4, from 1
-video_index = 4
+video_name = "task3e_top"  # Change the video name here
 ```
 
 Run the code task3.py, the processing time for each frame will be printed to terminal every 90 frames to demonstrate the real-time processing.

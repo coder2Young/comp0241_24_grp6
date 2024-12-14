@@ -74,40 +74,40 @@ def get_mask(frame):
     else:
         return mask, None, None
 
-video_name = "task3e_close"
+
 
 # Enable debug mode
 debug = False
 
 # Video file path and capture initialization
+video_name = "task3e_top"  # Change the video name here
 video_path = "./Dataset/grp6/task3/" + video_name + ".mp4"
 cap = cv2.VideoCapture(video_path)
-FPS = cap.get(cv2.CAP_PROP_FPS)
-if debug:
-    print(f"FPS: {FPS}")
 
 if not cap.isOpened():
     print("Error: Could not open the video file.")
     exit()
 
+FPS = cap.get(cv2.CAP_PROP_FPS)
+if debug:
+    print(f"FPS: {FPS}")
+
 # Parameters
 WINDOW_SIZE = 50
 MAX_WEIGHT_DISTANCE = 500
 MAX_TIME = 700  # 12 minutes in seconds, limite process time, between one rotation and two
-start_time = 10  # Start analyzing at 10 seconds, to avoid the initial noise
+init_time = 10  # Time for initialize, to avoid the initial noise
 
 # Initialize smoothing windows for centroid and radius
 centroid_window = deque(maxlen=WINDOW_SIZE)
 weight_window = deque(maxlen=WINDOW_SIZE)
 radius_window = deque(maxlen=WINDOW_SIZE)
 
-rotation_periods = []  # Store rotation periods
 SSD = []  # Store SSD values
-last_period_time = None
 
 # Calculate frame numbers
-init_frame_num = int(FPS * start_time)
-drop_frame_num = int(FPS * (start_time - 5))
+init_frame_num = int(FPS * init_time)
+drop_frame_num = int(FPS * (init_time - 5))
 
 # Initial smoothing for centroid and radius
 for i in range(init_frame_num):
@@ -177,6 +177,7 @@ while True:
         break
     if current_frame > MAX_TIME * FPS:
         break
+    
     process_end_time = cv2.getTickCount()
     process_time = (process_end_time - process_start_time) / cv2.getTickFrequency()
     frame_time = 1 / FPS
